@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Guru & Karyawan (Lokal)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .scroll-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .scroll-container::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-100 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            <p class="mt-4 text-lg text-gray-700">Memuat aplikasi...</p>
+        </div>
+    </div>
+
+    <!-- Konten Utama Aplikasi -->
+    <div id="app-content" class="max-w-6xl mx-auto bg-white shadow-xl rounded-2xl overflow-hidden p-6 sm:p-10">
+        
+        <!-- Header & Pengaturan -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-6">
+            <div class="flex items-center space-x-4 mb-4 sm:mb-0">
+                <img id="school-logo" src="https://placehold.co/60x60/4f46e5/ffffff?text=LOGO" alt="Logo Sekolah" class="h-16 w-16 object-cover rounded-full shadow-md">
+                <h1 id="school-name-display" class="text-3xl font-extrabold text-gray-900">Nama Sekolah Default</h1>
+            </div>
+            
+            <!-- Tombol Pengaturan -->
+            <button onclick="toggleSettings()" class="bg-gray-100 text-gray-600 hover:bg-gray-200 p-2 rounded-lg transition duration-150 flex items-center text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M5 4a1 1 0 011-1h4a1 1 0 011 1v1h-6V4zM4 6h12v11a1 1 0 01-1 1H5a1 1 0 01-1-1V6zm3 2a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm6 0a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1z" />
+                </svg>
+                Pengaturan
+            </button>
+        </header>
+        
+        <!-- Form Absensi Harian -->
+        <section id="absensi-form" class="mb-8 p-6 bg-blue-50 rounded-xl shadow-inner">
+            <h2 class="text-2xl font-semibold text-blue-800 mb-4">Absensi Harian</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="nama-karyawan" class="block text-sm font-medium text-gray-700 mb-1">Pilih Guru / Karyawan</label>
+                    <select id="nama-karyawan" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                        <option value="" disabled selected>-- Pilih Nama Anda --</option>
+                        <option value="Budi Santoso">Budi Santoso</option>
+                        <option value="Ani Wijaya">Ani Wijaya</option>
+                        <option value="Joko Susilo">Joko Susilo</option>
+                        <option value="Siti Rahayu">Siti Rahayu</option>
+                        <!-- Opsi Admin dihilangkan karena tidak ada autentikasi pengguna -->
+                    </select>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <label for="current-date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                        <input type="text" id="current-date" class="w-full p-3 bg-white border border-gray-300 rounded-lg text-gray-600 font-medium" disabled>
+                    </div>
+                    <div class="flex-1">
+                        <label for="current-time" class="block text-sm font-medium text-gray-700 mb-1">Jam</label>
+                        <input type="text" id="current-time" class="w-full p-3 bg-white border border-gray-300 rounded-lg text-gray-600 font-medium" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <div id="status-display" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-3 rounded-md mb-4 hidden"></div>
+            
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mt-6">
+                <button onclick="handleAttendance('datang')" id="btn-datang" class="flex-1 py-3 px-6 bg-green-600 text-white font-semibold rounded-xl shadow-lg hover:bg-green-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1m-1v-1m0-9v1m-1v-1m-1 7h1m-1 0h1m0-3h1m-1 0h1m-4-3h1m-1 0h1m-4-3h1m-1 0h1m-1-3h1m-1 0h1m-4 0h1m-1 0h1m-1 7h1m-1 0h1m-4 0h1m-1 0h1m-4-3h1m-1 0h1m0-3h1m-1 0h1m-4-3h1m-1 0h1m-1-3h1m-1 0h1m-4 0h1m-1 0h1" />
+                    </svg>
+                    ABSEN DATANG
+                </button>
+                <button onclick="handleAttendance('pulang')" id="btn-pulang" class="flex-1 py-3 px-6 bg-red-600 text-white font-semibold rounded-xl shadow-lg hover:bg-red-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                    ABSEN PULANG
+                </button>
+            </div>
+        </section>
+
+        <!-- Bagian Rekapitulasi Data -->
+        <section id="rekap-data" class="mt-10">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Rekapitulasi Absensi (Data Lokal)</h2>
+            
+            <div class="flex justify-end items-center mb-4">
+                <button onclick="exportToCSV()" class="bg-indigo-600 text-white p-3 rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 flex items-center text-sm disabled:opacity-50" disabled id="export-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 11.586l1.293-1.293a1 1 0 011.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v7a1 1 0 11-2 0V3a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Ekspor ke Excel (CSV)
+                </button>
+            </div>
+
+            <!-- Tabel Data Absensi -->
+            <div class="scroll-container overflow-x-auto rounded-lg shadow-lg border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Hari, Tahun</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nama Karyawan</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Jam Datang</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Jam Pulang</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-table-body" class="bg-white divide-y divide-gray-100">
+                        <!-- Data absensi akan dimasukkan di sini oleh JavaScript -->
+                        <tr>
+                            <td colspan="6" class="p-6 text-center text-gray-500">Memuat data absensi...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Modal Pengaturan (Tersembunyi secara default) -->
+        <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-40 hidden">
+            <div class="bg-white p-8 rounded-xl shadow-2xl max-w-lg w-full">
+                <h3 class="text-2xl font-bold mb-6 text-gray-800">Pengaturan Aplikasi</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="input-school-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Sekolah</label>
+                        <input type="text" id="input-school-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan Nama Sekolah">
+                    </div>
+                    <div>
+                        <label for="input-logo-url" class="block text-sm font-medium text-gray-700 mb-1">URL Logo Sekolah</label>
+                        <input type="text" id="input-logo-url" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: https://placehold.co/60x60/4f46e5/ffffff?text=LOGO">
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 mt-8">
+                    <button onclick="toggleSettings()" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-150">Batal</button>
+                    <button onclick="saveSettings()" class="py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150">Simpan Perubahan</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Modal Pesan (Pengganti alert()) -->
+        <div id="message-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-40 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+                <h4 id="message-title" class="text-xl font-bold mb-3 text-gray-800"></h4>
+                <p id="message-body" class="text-gray-600 mb-4"></p>
+                <div class="flex justify-end">
+                    <button onclick="closeMessageModal()" class="py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150">OK</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Logika Aplikasi Local Storage -->
+    <script>
+        // --- KONSTANTA LOCAL STORAGE ---
+        const ATTENDANCE_KEY = 'attendance_records';
+        const SETTINGS_KEY = 'app_settings';
+
+        let currentAttendanceData = {}; // Data mentah absensi dari Local Storage
+
+        // --- UTILITY FUNCTIONS ---
+
+        // Fungsi untuk mengambil data dari Local Storage
+        const getLocalStorageData = (key, defaultValue = {}) => {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : defaultValue;
+            } catch (e) {
+                console.error(`Gagal memuat data lokal untuk kunci ${key}:`, e);
+                return defaultValue;
+            }
+        };
+
+        // Fungsi untuk menyimpan data ke Local Storage
+        const setLocalStorageData = (key, data) => {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+                return true;
+            } catch (e) {
+                console.error(`Gagal menyimpan data lokal untuk kunci ${key}:`, e);
+                return false;
+            }
+        };
+
+        // Fungsi untuk menampilkan modal pesan kustom
+        window.showMessageModal = (title, body) => {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-body').textContent = body;
+            document.getElementById('message-modal').classList.remove('hidden');
+        };
+
+        window.closeMessageModal = () => {
+            document.getElementById('message-modal').classList.add('hidden');
+        };
+
+        // Fungsi untuk format tanggal dan waktu
+        const formatDateTime = (date) => {
+            const optionsDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            
+            const dateStr = date.toLocaleDateString('id-ID', optionsDate);
+            const timeStr = date.toLocaleTimeString('id-ID', optionsTime);
+
+            return {
+                fullDate: dateStr,
+                time: timeStr,
+                dateKey: date.toISOString().split('T')[0], // Format YYYY-MM-DD
+                day: date.toLocaleDateString('id-ID', { weekday: 'long' }),
+                year: date.getFullYear()
+            };
+        };
+
+        // Fungsi untuk memperbarui tampilan waktu
+        const updateClock = () => {
+            const now = new Date();
+            const { fullDate, time } = formatDateTime(now);
+            document.getElementById('current-date').value = fullDate;
+            document.getElementById('current-time').value = time;
+        };
+
+        // Mulai jam digital
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Helper untuk format ISO string menjadi jam (HH:MM:SS)
+        const formatTimestamp = (isoString) => {
+            if (!isoString) return '-';
+            try {
+                // Gunakan fungsi formatDateTime untuk konsistensi lokal
+                const date = new Date(isoString);
+                return formatDateTime(date).time;
+            } catch (e) {
+                return 'Invalid Time';
+            }
+        };
+
+        // --- PENGATURAN LOGO & NAMA SEKOLAH ---
+
+        window.toggleSettings = () => {
+            const modal = document.getElementById('settings-modal');
+            const isHidden = modal.classList.contains('hidden');
+            if (isHidden) {
+                // Isi formulir pengaturan dengan nilai saat ini dari tampilan
+                const settings = getLocalStorageData(SETTINGS_KEY, { schoolName: 'Nama Sekolah Default', logoUrl: 'https://placehold.co/60x60/4f46e5/ffffff?text=LOGO' });
+                document.getElementById('input-school-name').value = settings.schoolName;
+                document.getElementById('input-logo-url').value = settings.logoUrl;
+            }
+            modal.classList.toggle('hidden');
+        };
+
+        // Memuat Pengaturan dari Local Storage
+        const loadSettings = () => {
+            const settings = getLocalStorageData(SETTINGS_KEY, { 
+                schoolName: 'Nama Sekolah Default', 
+                logoUrl: 'https://placehold.co/60x60/4f46e5/ffffff?text=LOGO' 
+            });
+
+            document.getElementById('school-name-display').textContent = settings.schoolName;
+            document.getElementById('school-logo').src = settings.logoUrl;
+        };
+
+        // Menyimpan Pengaturan ke Local Storage
+        window.saveSettings = () => {
+            const schoolName = document.getElementById('input-school-name').value.trim();
+            const logoUrl = document.getElementById('input-logo-url').value.trim();
+
+            if (!schoolName) {
+                showMessageModal("Perhatian", "Nama sekolah tidak boleh kosong.");
+                return;
+            }
+
+            const newSettings = {
+                schoolName: schoolName,
+                logoUrl: logoUrl || 'https://placehold.co/60x60/4f46e5/ffffff?text=LOGO',
+            };
+            
+            if (setLocalStorageData(SETTINGS_KEY, newSettings)) {
+                // Perbarui tampilan
+                document.getElementById('school-name-display').textContent = newSettings.schoolName;
+                document.getElementById('school-logo').src = newSettings.logoUrl;
+
+                toggleSettings();
+                showMessageModal("Berhasil", "Pengaturan sekolah berhasil diperbarui!");
+            } else {
+                showMessageModal("Kesalahan", "Gagal menyimpan pengaturan ke Local Storage.");
+            }
+        };
+
+        // --- LOGIKA ABSENSI LOKAL ---
+
+        const getTodayAttendance = (name, dateKey) => {
+            const allData = getLocalStorageData(ATTENDANCE_KEY);
+            return allData[name] ? allData[name][dateKey] : null;
+        };
+
+        const updateStatusDisplay = (name, data) => {
+            const display = document.getElementById('status-display');
+            display.classList.remove('hidden');
+            display.classList.remove('bg-green-100', 'border-green-500', 'text-green-700');
+            display.classList.remove('bg-yellow-100', 'border-yellow-500', 'text-yellow-700');
+            
+            const btnDatang = document.getElementById('btn-datang');
+            const btnPulang = document.getElementById('btn-pulang');
+
+            if (!name) {
+                display.classList.add('hidden');
+                btnDatang.disabled = true;
+                btnPulang.disabled = true;
+                return;
+            }
+
+            btnDatang.disabled = false;
+            btnPulang.disabled = false;
+
+            if (!data) {
+                display.classList.add('bg-yellow-100', 'border-yellow-500', 'text-yellow-700');
+                display.innerHTML = `👋 **${name}**, Anda belum absen hari ini. Silakan **ABSEN DATANG**.`;
+                btnPulang.disabled = true;
+            } else if (data.datangTime && !data.pulangTime) {
+                display.classList.add('bg-yellow-100', 'border-yellow-500', 'text-yellow-700');
+                display.innerHTML = `🕒 **${name}**, Anda sudah **DATANG** pada ${formatTimestamp(data.datangTime)}. Jangan lupa **ABSEN PULANG** nanti.`;
+                btnDatang.disabled = true;
+            } else if (data.datangTime && data.pulangTime) {
+                display.classList.add('bg-green-100', 'border-green-500', 'text-green-700');
+                display.innerHTML = `✅ **${name}**, Absensi hari ini sudah **LENGKAP** (Datang: ${formatTimestamp(data.datangTime)}, Pulang: ${formatTimestamp(data.pulangTime)}).`;
+                btnDatang.disabled = true;
+                btnPulang.disabled = true;
+            } else {
+                 // Kasus tidak terduga, default ke belum absen
+                 display.classList.add('hidden');
+            }
+        };
+
+        window.handleAttendance = (type) => {
+            const selectElement = document.getElementById('nama-karyawan');
+            const selectedName = selectElement.value;
+
+            if (!selectedName) {
+                showMessageModal("Perhatian", "Anda harus memilih nama Anda dari daftar sebelum absen.");
+                return;
+            }
+
+            const now = new Date();
+            const { dateKey } = formatDateTime(now);
+            const attendanceData = getLocalStorageData(ATTENDANCE_KEY);
+            const todayRecord = getTodayAttendance(selectedName, dateKey);
+            
+            // Inisialisasi jika nama belum ada
+            if (!attendanceData[selectedName]) {
+                attendanceData[selectedName] = {};
+            }
+            
+            // Inisialisasi jika hari ini belum ada record
+            if (!attendanceData[selectedName][dateKey]) {
+                 attendanceData[selectedName][dateKey] = { datangTime: null, pulangTime: null };
+            }
+
+            try {
+                if (type === 'datang') {
+                    if (todayRecord && todayRecord.datangTime) {
+                        showMessageModal("Gagal Absen Datang", `Anda (${selectedName}) sudah absen datang pada ${formatTimestamp(todayRecord.datangTime)}.`);
+                        return;
+                    }
+                    
+                    // Lakukan Absen Datang
+                    attendanceData[selectedName][dateKey].datangTime = now.toISOString();
+                    if (setLocalStorageData(ATTENDANCE_KEY, attendanceData)) {
+                         showMessageModal("Berhasil Absen Datang", `Anda (${selectedName}) telah berhasil absen datang pada ${formatDateTime(now).time}.`);
+                    }
+
+                } else if (type === 'pulang') {
+                    if (!todayRecord || !todayRecord.datangTime) {
+                        showMessageModal("Gagal Absen Pulang", "Anda harus Absen Datang terlebih dahulu hari ini.");
+                        return;
+                    }
+                    if (todayRecord.pulangTime) {
+                        showMessageModal("Gagal Absen Pulang", `Anda (${selectedName}) sudah absen pulang pada ${formatTimestamp(todayRecord.pulangTime)}.`);
+                        return;
+                    }
+                    
+                    // Lakukan Absen Pulang
+                    attendanceData[selectedName][dateKey].pulangTime = now.toISOString();
+                    if (setLocalStorageData(ATTENDANCE_KEY, attendanceData)) {
+                        showMessageModal("Berhasil Absen Pulang", `Anda (${selectedName}) telah berhasil absen pulang pada ${formatDateTime(now).time}.`);
+                    }
+                }
+                
+                // Perbarui tampilan status dan rekapitulasi setelah absen berhasil
+                updateStatusDisplay(selectedName, attendanceData[selectedName][dateKey]);
+                loadAndRenderAttendanceData();
+
+            } catch (error) {
+                console.error("Kesalahan saat memproses absensi:", error);
+                showMessageModal("Kesalahan Sistem", "Gagal menyimpan data absensi ke Local Storage: " + error.message);
+            }
+        };
+
+        // --- REKAPITULASI DATA (LOKAL) ---
+        
+        // Helper untuk mendapatkan status berdasarkan waktu
+        const getStatus = (datangTime, pulangTime) => {
+            if (datangTime && pulangTime) return 'Lengkap';
+            if (datangTime) return 'Hanya Datang';
+            if (pulangTime) return 'Hanya Pulang (Error)';
+            return 'Absen';
+        };
+
+        const loadAndRenderAttendanceData = () => {
+            currentAttendanceData = getLocalStorageData(ATTENDANCE_KEY);
+            
+            const tableBody = document.getElementById('attendance-table-body');
+            tableBody.innerHTML = ''; // Kosongkan tabel
+            
+            // Mengumpulkan semua tanggal unik
+            let allDates = new Set();
+            Object.values(currentAttendanceData).forEach(userAttendance => {
+                Object.keys(userAttendance).forEach(date => allDates.add(date));
+            });
+            
+            // Urutkan tanggal dari terbaru ke terlama
+            const sortedDates = Array.from(allDates).sort().reverse();
+            
+            if (sortedDates.length === 0) {
+                 tableBody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500">Belum ada data absensi yang tercatat di perangkat ini.</td></tr>`;
+                 document.getElementById('export-button').disabled = true;
+                 return;
+            }
+            
+            document.getElementById('export-button').disabled = false;
+
+            // Gabungkan semua data menjadi format baris datar
+            let flatData = [];
+            sortedDates.forEach(dateKey => {
+                const dateObj = new Date(dateKey + 'T00:00:00'); 
+                const { fullDate, day, year } = formatDateTime(dateObj);
+
+                Object.keys(currentAttendanceData).forEach(name => {
+                    const record = currentAttendanceData[name][dateKey];
+                    if (record) {
+                        flatData.push({
+                            date: fullDate,
+                            dayYear: `${day}, ${year}`,
+                            name: name,
+                            datangTime: formatTimestamp(record.datangTime),
+                            pulangTime: formatTimestamp(record.pulangTime),
+                            status: getStatus(record.datangTime, record.pulangTime),
+                            // Sertakan data ISO untuk CSV
+                            datangIso: record.datangTime,
+                            pulangIso: record.pulangTime
+                        });
+                    }
+                });
+            });
+
+            // Tampilkan data di tabel
+            flatData.forEach(item => {
+                const row = `
+                    <tr class="hover:bg-gray-50 transition duration-100">
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${item.date}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${item.dayYear}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-700">${item.name}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-blue-600">${item.datangTime}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-red-600">${item.pulangTime}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                ${item.status === 'Lengkap' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${item.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        };
+
+        // --- EKSPOR KE CSV (EXCEL) ---
+
+        window.exportToCSV = () => {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // 1. Header CSV
+            const headers = ["Tanggal", "Hari", "Tahun", "Nama Karyawan", "Jam Datang (Lokal)", "Jam Pulang (Lokal)", "Status", "Jam Datang (ISO)", "Jam Pulang (ISO)"];
+            csvContent += headers.join(",") + "\n";
+
+            let allRecords = [];
+            
+            // Flatten data
+            Object.keys(currentAttendanceData).forEach(name => {
+                Object.keys(currentAttendanceData[name]).forEach(dateKey => {
+                    const record = currentAttendanceData[name][dateKey];
+                    const dateObj = new Date(dateKey + 'T00:00:00'); 
+                    const { day, year } = formatDateTime(dateObj);
+
+                    allRecords.push({
+                        date: dateKey,
+                        day: day,
+                        year: year,
+                        name: name,
+                        datangLokal: formatTimestamp(record.datangTime),
+                        pulangLokal: formatTimestamp(record.pulangTime),
+                        status: getStatus(record.datangTime, record.pulangTime),
+                        datangIso: record.datangTime || '',
+                        pulangIso: record.pulangTime || '',
+                    });
+                });
+            });
+
+            // 2. Data Baris
+            allRecords.forEach(item => {
+                // Pastikan nilai string tidak mengandung koma, jika ada, hapus atau gunakan petik dua
+                const row = [
+                    item.date,
+                    item.day.replace(/,/g, ''),
+                    item.year,
+                    item.name.replace(/,/g, ''),
+                    item.datangLokal.replace(/,/g, ''),
+                    item.pulangLokal.replace(/,/g, ''),
+                    item.status,
+                    item.datangIso,
+                    item.pulangIso
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            // 3. Buat dan unduh file
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            
+            const now = new Date().toISOString().slice(0, 10);
+            link.setAttribute("download", `Rekap_Absensi_Lokal_${now}.csv`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showMessageModal("Ekspor Berhasil", "Data rekap absensi berhasil diunduh sebagai file CSV. Buka dengan Excel.");
+        };
+
+        // Event listener untuk memperbarui status display saat nama diubah
+        document.getElementById('nama-karyawan').addEventListener('change', (event) => {
+            const selectedName = event.target.value;
+            const now = new Date();
+            const { dateKey } = formatDateTime(now);
+            
+            const todayAttendance = getTodayAttendance(selectedName, dateKey);
+            updateStatusDisplay(selectedName, todayAttendance);
+        });
+        
+        // --- INISIALISASI APLIKASI ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            loadAndRenderAttendanceData();
+        });
+
+    </script>
+</body>
+</html>
